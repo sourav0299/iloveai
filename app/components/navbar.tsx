@@ -1,16 +1,22 @@
 "use client"
+import { Heart } from "lucide-react";
 import NavbarLogoutProfile from "./navbarLogoutProfile";
 import { NavbarWallet } from "./navbarWallet";
 import { ModeToggle } from "./theme-toggle-button";
 
-
 export default function Navbar() {
     return (
-        <div className="flex items-center justify-center">
-            <div className="flex items-center justify-end w-full">
+        <div className="flex items-center justify-between w-full max-w-[1440px] mx-auto px-4 py-3">
+            {/* Left section - empty for spacing */}
+            <div className="w-1/4 flex items-center gap-2" >I {<Heart />} AI</div>
+            
+            {/* Center section - wallet */}
+            <div className="flex items-center justify-center flex-1">
                 <NavbarWallet />
             </div>
-            <div className="flex items-center justify-end py-3 px-3 w-full max-w-[1440px] gap-4">
+            
+            {/* Right section - profile and theme toggle */}
+            <div className="flex items-center justify-end gap-4 w-1/4">
                 <NavbarLogoutProfile />
                 <ModeToggle />
             </div>
