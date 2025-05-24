@@ -8,7 +8,7 @@ export default function Navbar() {
     return (
         <div className="flex items-center justify-between w-full max-w-[1440px] mx-auto px-4 py-3">
             {/* Left section - empty for spacing */}
-            <div className="w-1/4 flex items-center gap-2" >I {<Heart />} AI</div>
+            <div className="w-1/4"><a className="flex items-center gap-2" href="/">I {<Heart />} AI</a></div>
             
             {/* Center section - wallet */}
             <div className="flex items-center justify-center flex-1">
