@@ -141,19 +141,23 @@ const handlePayment = async(amount: number) => {
         handler: async function (response: any) {
           try{
           setIsLoading(true)
-          await handleUpdateCredits(amount, user.uid)
-          const newBalance = await fetchBalance()
-          if(newBalance?.credits !== undefined){
-            setBalance(newBalance.credits);
+          try {
+            await handleUpdateCredits(amount, user.uid)
+            const newBalance = await fetchBalance()
+            if(newBalance?.credits !== undefined){
+              setBalance(newBalance.credits);
+            }
+            toast.success(`₹${amount} Credits Added to Wallet`)
+          } catch (error) {
+            toast.error("Try again Later")
+            console.log(error)
+          } finally {
+            setIsLoading(false)
           }
-          toast.success(`₹${amount} Credits Added to Wallet`)
-        }catch(error){
-          toast.error("Try again Later")
-          console.log(error)
-        }
       },
       modal: {
         ondismiss: function() {
+          setIsLoading(false);
           toast.error("Payment cancelled");
         }
       },
