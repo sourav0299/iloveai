@@ -56,7 +56,8 @@ export default function NavbarLogoutProfile() {
         try{
             await signOut(auth);
         }catch(error){
-            console.error("Error Sign Out")
+            console.error("Error signing out:", error);
+            toast.error("Failed to sign out. Please try again.");
         }
     }
 
