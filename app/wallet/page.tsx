@@ -1,17 +1,67 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { IndianRupee } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import useAuth from "@/hooks/useAuthFirebase"
+import { useRouter } from "next/navigation"
+import toast from "react-hot-toast"
+import Loader from "../components/loader"
 
 const QUICK_AMOUNTS = [500, 1000, 2500, 5000, 10000]
 
 export default function CreditsPage() {
   const [amount, setAmount] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const { user, loading } = useAuth()
+  const [balance, setBalance] = useState<number | null>(null)
+  const router = useRouter()
+
+  const fetchBalance = async() => {
+    try{
+      const response = await fetch(`/api/sso-login?firebaseUid=${user?.uid}`)
+      if(!response.ok){
+        throw new Error("Fail to fetch profile data");
+      }
+      const data = await response.json()
+      return data;
+    }catch(error){
+      console.log("Failed fetching account balance")
+      toast.error("Something went wrong")
+    }
+  }
+
+  useEffect(() => {
+    const loadBalance = async() => {
+      const data = await fetchBalance()
+      if(data?.credits !== undefined){
+        setBalance(data.credits)
+      }
+    }
+    loadBalance()
+  }, [user])
+
+  // Handle authentication check
+  useEffect(() => {
+    // Only redirect if not loading and no user
+    if (!loading && !user) {
+      toast.error("Please login to access wallet")
+      router.push('/')
+    }
+  }, [user, router, loading])
+
+  // Show loading state while checking auth
+  if (loading) {
+    return (
+      <Loader />
+    )
+  }
+
+  // Protect the page from unauthorized access
+  if (!user) return null
 
   const handleQuickAmount = (value: number) => {
     setAmount(value.toString())
@@ -42,7 +92,16 @@ export default function CreditsPage() {
           <CardContent className="pt-6">
             <div className="text-center">
               <p className="text-sm text-muted-foreground mb-1">Current Balance</p>
-              <p className="text-2xl font-bold text-foreground">₹2,850.00</p>
+             <p className="text-2xl font-bold text-foreground">
+        {balance === null ? (
+          <span className="animate-pulse">Loading...</span>
+        ) : (
+          `₹${balance.toLocaleString("en-IN", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })}`
+        )}
+      </p>
             </div>
           </CardContent>
         </Card>
