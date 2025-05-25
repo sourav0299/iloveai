@@ -11,6 +11,13 @@ import { useRouter } from "next/navigation"
 import toast from "react-hot-toast"
 import Loader from "../components/loader"
 
+declare global {
+  interface Window {
+    Razorpay: any;
+  }
+}
+
+
 const QUICK_AMOUNTS = [500, 1000, 2500, 5000, 10000]
 
 export default function CreditsPage() {
@@ -19,6 +26,20 @@ export default function CreditsPage() {
   const { user, loading } = useAuth()
   const [balance, setBalance] = useState<number | null>(null)
   const router = useRouter()
+
+  const handleUpdateCredits = async(amount: number, firebaseUid: string) => {
+    const response = await fetch('/api/purchase-credit', {
+      method: 'PUT',
+      headers: {
+        'Content-Type' : 'application/json'
+      },
+      body: JSON.stringify({amount, firebaseUid})
+    });
+    if(!response.ok){
+      throw new Error("Fail to update credits");
+    }
+    return response.json();
+  }
 
   const fetchBalance = async() => {
     try{
@@ -34,7 +55,7 @@ export default function CreditsPage() {
     }
   }
 
-  useEffect(() => {
+    useEffect(() => {
     const loadBalance = async() => {
       const data = await fetchBalance()
       if(data?.credits !== undefined){
@@ -42,7 +63,7 @@ export default function CreditsPage() {
       }
     }
     loadBalance()
-  }, [user])
+  }, [user])   
 
   // Handle authentication check
   useEffect(() => {
@@ -67,14 +88,90 @@ export default function CreditsPage() {
     setAmount(value.toString())
   }
 
-  const handleProceedPayment = async () => {
-    if (!amount || Number.parseFloat(amount) < 10) return
-    setIsLoading(true)
-    setTimeout(() => {
-      setIsLoading(false)
-      alert(`Processing payment of ₹${amount}`)
-    }, 2000)
+const handleProceedPayment = async () => {
+  if (!amount || Number.parseFloat(amount) < 10) return
+  
+  setIsLoading(true)
+  
+  toast.promise(
+    handleUpdateCredits(Number(amount), user.uid)
+      .then(async (response) => {
+        const data = await fetchBalance()
+        if (data?.credits !== undefined) {
+          setBalance(data.credits)
+        }
+        return response
+      }),
+    {
+      loading: `Processing payment of ₹${amount}`,
+      success: <b>Payment Success!</b>,
+      error: <b>Payment Failed!</b>
+    }
+  ).finally(() => {
+    setIsLoading(false)
+  })
+}
+
+const handlePayment = async(amount: number) => {
+  try{
+    const response = await fetch('/api/create-razorpay-order', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({amount})
+    });
+    const data = await response.json();
+    if(!response.ok){
+      throw new Error("Payment failed")
+    }
+
+   const razorpay = new window.Razorpay({
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        order_id: data.orderId,
+        amount: data.amount,
+        currency: data.currency,
+        name: "I LOVE AI",
+        description: `Payment for ${data.orderId}`,
+        image: "/logo.png",
+        prefill: {
+          name: user.displayName || "",
+          email: user.email,
+        },
+        handler: async function (response: any) {
+          try{
+          setIsLoading(true)
+          await handleUpdateCredits(amount, user.uid)
+          const newBalance = await fetchBalance()
+          if(newBalance?.credits !== undefined){
+            setBalance(newBalance.credits);
+          }
+          toast.success(`₹${amount} Credits Added to Wallet`)
+        }catch(error){
+          toast.error("Try again Later")
+          console.log(error)
+        }
+      },
+      modal: {
+        ondismiss: function() {
+          toast.error("Payment cancelled");
+        }
+      },
+      theme: {
+        color: "#000000"
+      }
+    });
+
+    razorpay.on('payment.failed', function(resp: any) {
+      toast.error(resp.error.description || "Payment failed");
+    });
+
+    razorpay.open();
+  } catch (error) {
+    console.error("Payment initialization failed:", error);
+    toast.error("Failed to process payment");
   }
+};
 
   const isValidAmount = amount && Number.parseFloat(amount) >= 10 && Number.parseFloat(amount) <= 25000
 
@@ -168,7 +265,7 @@ export default function CreditsPage() {
             <Button
               className="w-full h-12 text-base"
               disabled={!isValidAmount || isLoading}
-              onClick={handleProceedPayment}
+              onClick={() => handlePayment(Number(amount))}
             >
               {isLoading ? "Processing..." : amount ? `Add ₹${amount} Credits` : "Enter Amount"}
             </Button>
