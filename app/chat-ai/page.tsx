@@ -2,6 +2,11 @@
 
 import { useState, useEffect, useRef } from 'react';
 import '../globals.css'
+import Loader from '../components/loader';
+import Selector from './components/selector'
+import useAuth from '@/hooks/useAuthFirebase';
+import toast from 'react-hot-toast';
+import ContentRenderer from './components/contentRenderer';
 
 interface Message {
   content: any;
@@ -9,7 +14,7 @@ interface Message {
   sender: string;
 }
 
-const TYPING_SPEED = 30;
+const TYPING_SPEED = 7;
 const CHATBOT_NAME = 'AI Assistant';
 
 const Chatbox = () => {
@@ -20,8 +25,9 @@ const Chatbox = () => {
   const [animatedText, setAnimatedText] = useState<string>('');
   const [userName, setUserName] = useState<string>('');
   const chatBoxRef = useRef<HTMLDivElement>(null);
-  const { theme, toggleTheme } = useTheme();
-   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  const { user } = useAuth()
+
 
   useEffect(() => {
     fetchRemainingQuota();
@@ -44,7 +50,7 @@ const clearChat = () => {
 
   const fetchRemainingQuota = async () => {
     try {
-      const response = await fetch('/api/chatbot');
+      const response = await fetch('/api/chat-ai/gemini/gemini-2.0-flash');
       if (response.ok) {
         const data = await response.json();
         setRemainingQuota(data.remainingQuota);
@@ -68,6 +74,11 @@ const clearChat = () => {
   };
 
   const sendMessage = async () => {
+    if(!user){
+      toast.error("Please Login and Try Again")
+      return
+    }
+
     if (input.trim() === '') return;
 
     const userMessage: Message = { content: input, isUser: true, sender: userName || 'You' };
@@ -76,7 +87,7 @@ const clearChat = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/chatbot', {
+      const response = await fetch('/api/chat-ai/gemini/gemini-2.0-flash', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: input }),
@@ -107,7 +118,7 @@ const clearChat = () => {
   const handleCopy = (index: number, codeContent: string) => {
     navigator.clipboard.writeText(codeContent);
     setCopiedIndex(index);
-    setTimeout(() => setCopiedIndex(null), 2000); // Reset after 2 seconds
+    setTimeout(() => setCopiedIndex(null), 2000);
   };
 
   const renderContent = (content: string) => {
@@ -126,14 +137,12 @@ const clearChat = () => {
 
             return (
               <div key={index} className="relative">
-                <pre className={`p-4 my-2 rounded-lg overflow-x-auto ${theme === 'dark' ? 'bg-gray-800 text-gray-100' : 'bg-gray-100 text-gray-800'}`}>
+                <pre className={`my-2 p-4 rounded-lg overflow-x-auto dark:bg-gray-800 dark:text-gray-100 bg-gray-100 text-gray-800`}>
                   <code>{codeContent}</code>
                 </pre>
                 <button
                   onClick={() => handleCopy(index, codeContent)}
-                  className={`absolute top-2 right-2 p-1 rounded-md ${
-                    theme === 'dark' ? 'bg-gray-700 text-white hover:bg-gray-600' : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
-                  } flex items-center`}
+                  className={`absolute top-2 right-2 p-1 rounded-md dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600 bg-gray-200 text-gray-800 hover:bg-gray-300  flex items-center`}
                   title={isCopied ? "Copied!" : "Copy to clipboard"}
                 >
                   {isCopied ? (
@@ -159,91 +168,111 @@ const clearChat = () => {
 
   const renderMessage = (msg: Message) => (
     <div>
-      <div className={`font-bold mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{msg.sender}</div>
+      <div className={`font-bold mb-1 text-gray-700`}>{msg.sender}</div>
       {typeof msg.content === 'string' ? (
+        msg.content.includes('*') ? (
+        <ContentRenderer content={msg.content} />
+      ) : (
         renderContent(msg.content)
+      )
       ) : (
         <div>
-          {msg.content.text && renderContent(msg.content.text)}
-          {msg.content.image && <img src={msg.content.image} alt="Response image" className="max-w-full h-auto" />}
-        </div>
+        {msg.content.text && (
+          msg.content.text.includes('*') ? (
+            <ContentRenderer content={msg.content.text} />
+          ) : (
+            renderContent(msg.content.text)
+          )
+        )}
+        {msg.content.image && (
+          <img src={msg.content.image} alt="Response image" className="max-w-full h-auto" />
+        )}
+      </div>
       )}
     </div>
   );
   
 return (
-    <div className={`w-full max-w-[1200px] p-4 mx-auto rounded-lg shadow-lg ${theme === 'dark' ? 'bg-[#343541] text-white' : 'bg-white text-[#353740]'}`}>
-    <div className="flex justify-end mb-4 gap-5">
-      <Selector />
+  <div className="w-full max-w-[1200px] mx-auto rounded-2xl bg-background text-foreground">
+    <div className="flex justify-end mb-4 gap-4">
       <button
         onClick={clearChat}
-        className={`px-4 py-2 rounded-md ${
-          theme === 'dark'
-            ? 'bg-red-600 hover:bg-red-700 text-white'
-            : 'bg-red-500 hover:bg-red-600 text-white'
-        } transition-colors`}
+        className="px-6 py-2.5 rounded-lg bg-destructive text-destructive-foreground transition-all duration-300 shadow hover:shadow-lg hover:scale-105"
       >
         Clear Chat
       </button>
-      <ThemeToggleButton onChange={toggleTheme} checked={theme === 'dark'} />
-      </div>
-      <div ref={chatBoxRef} className={`custom-scrollbar ${theme} h-[calc(100vh-200px)] overflow-y-auto p-5 rounded mb-4 ${theme === 'dark' ? 'bg-[#444654]' : 'bg-gray-50'}`}>
-        {messages.map((msg, index) => (
-          <div
-            key={index}
-            className={`mb-4 p-4 rounded-lg ${
-              msg.isUser
-                ? `${theme === 'dark' ? 'bg-[#343541]' : 'bg-white'}`
-                : `${theme === 'dark' ? 'bg-[#444654]' : 'bg-gray-100'} ${theme === 'dark' ? 'text-[#ececf1]' : 'text-[#353740]'}`
-            }`}
-          >
-            {renderMessage(msg)}
-          </div>
-        ))}
-        {animatedText && (
-          <div className={`mb-4 p-4 rounded-lg ${theme === 'dark' ? 'bg-[#444654] text-[#ececf1]' : 'bg-gray-100 text-[#353740]'}`}>
-            <div className={`font-bold mb-1 ${theme === 'dark' ? 'text-[#ececf1]' : 'text-[#353740]'}`}>{CHATBOT_NAME}</div>
-            {animatedText}
-          </div>
-        )}
-        {isLoading && (
-          <div className={`text-center ${theme === 'dark' ? 'text-[#ececf1]' : 'text-[#353740]'}`}>
-            <Loading />
-          </div>
-        )}
-      </div>
-      <div className="flex space-x-2 mb-2">
-        <input
-          type="text"
-          value={userName}
-          onChange={(e) => setUserName(e.target.value)}
-          placeholder="Your name (optional)"
-          className={`flex-grow hidden p-2 rounded ${theme === 'dark' ? 'bg-[#40414f] text-white' : 'bg-white text-[#353740]'} border ${theme === 'dark' ? 'border-[#565869]' : 'border-gray-300'}`}
-        />
-      </div>
-    <div className={`flex p-2 rounded-full space-x-2 border ${theme === 'dark' ? 'bg-[#40414f] text-white' : 'bg-white text-[#353740]'} ${theme === 'dark' ? 'border-[#565869]' : 'border-gray-300'}`}>
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder={`Type your message here, ${userName || 'User'}...`}
-          className={`flex-grow p-2 rounded bg-transparent focus:outline-none ${
-      theme === 'dark' ? 'text-white placeholder-gray-400' : 'text-[#353740] placeholder-gray-500'
-    }`}
-          onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), sendMessage())}
-        />
-        <button
-          onClick={sendMessage}
-          className={`p-3 rounded-full ${theme === 'dark' ? 'bg-[#19c37d] hover:bg-[#1a7f5a]' : 'bg-[#19c37d] hover:bg-[#1a7f5a]'} text-white disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors`}
-          disabled={isLoading}
+    </div>
+    <div 
+      ref={chatBoxRef} 
+      className="custom-scrollbar h-[calc(100vh-260px)] overflow-y-auto p-6 rounded-2xl mb-6 bg-secondary/50 backdrop-blur-sm shadow-inner"
+    >
+      {messages.map((msg, index) => (
+        <div
+          key={index}
+          className={`mb-3 p-3 px-5 rounded-2xl backdrop-blur-sm transition-all duration-300 ${
+            msg.isUser
+              ? 'bg-card text-card-foreground shadow-lg hover:shadow-xl ml-12 transform hover:-translate-y-1'
+              : 'bg-accent text-accent-foreground mr-12 transform hover:-translate-y-1'
+          }`}
         >
+          {renderMessage(msg)}
+        </div>
+      ))}
+      {animatedText && (
+        <div className="mb-6 p-6 rounded-2xl bg-accent text-accent-foreground mr-12 backdrop-blur-sm">
+          <div className="font-bold mb-2 text-primary">{CHATBOT_NAME}</div>
+          {animatedText}
+        </div>
+      )}
+      {isLoading && (
+        <div className="text-center text-muted-foreground">
+          <Loader />
+        </div>
+      )}
+    </div>
+    <div className="flex space-x-2 mb-1">
+      <input
+        type="text"
+        value={userName}
+        onChange={(e) => setUserName(e.target.value)}
+        placeholder="Your name (optional)"
+        className="flex-grow hidden p-3 rounded-xl bg-input text-foreground border-border focus:ring-2 focus:ring-ring focus:border-transparent transition-all duration-300"
+      />
+    </div>
+    <div className="flex p-2 rounded-2xl space-x-3 border border-border bg-card/80 backdrop-blur-sm shadow-lg">
+      <input
+        type="text"
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+        placeholder={`Ask your curious message here.....`}
+        className="flex-grow p-3 rounded-xl bg-transparent focus:outline-none text-foreground placeholder-muted-foreground"
+        onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), sendMessage())}
+      />
+      <button
+        onClick={sendMessage}
+        className="group p-4 text-sm rounded-xl bg-primary text-primary-foreground hover:bg-secondary hover:text-secondary-foreground disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 shadow-md hover:shadow-lg w-[48px] h-[48px] flex items-center justify-center"
+        disabled={isLoading}
+        onMouseEnter={() => toast('Cost per message: ₹1', {
+        id: 'cost-tooltip',
+        icon: '💰',
+        duration: 2000,
+        style: {
+          borderRadius: '10px',
+          background: 'var(--secondary)',
+          color: 'var(--secondary-foreground)',
+        },
+      })}
+      >
+        <span className="block group-hover:hidden absolute">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="bi bi-send" viewBox="0 0 16 16">
             <path d="M15.854.146a.5.5 0 0 1 .11.54l-5.819 14.547a.75.75 0 0 1-1.329.124l-3.178-4.995L.643 7.184a.75.75 0 0 1 .124-1.33L15.314.037a.5.5 0 0 1 .54.11ZM6.636 10.07l2.761 4.338L14.13 2.576zm6.787-8.201L1.591 6.602l4.339 2.76z"/>
           </svg>
-        </button>
-      </div>
+        </span>
+        <span className="hidden group-hover:block absolute font-bold">₹1</span>
+      </button>
     </div>
-  );
+  </div>
+);
 };
 
 export default Chatbox;
