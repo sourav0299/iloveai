@@ -3,19 +3,19 @@ import CardComponent from "./cards"
 export default function CardExamples() {
   const cardData = [
     {
-      image: "https://source.unsplash.com/400x300/?office",
+      image: "https://diplo-media.s3.eu-central-1.amazonaws.com/2024/11/apple-chatgpt-plus-subscription-upgrade-1024x576.png",
+      title: "Chat Bot",
+      description: "Chat Bot is Google’s AI model that understands text. It powers smart features in Gmail, Docs, and other tools for writing, summarizing, and productivity.",
+      link: "/chat-ai"
+    },
+    {
+      image: "https://diplo-media.s3.eu-central-1.amazonaws.com/2024/11/apple-chatgpt-plus-subscription-upgrade-1024x576.png",
       title: "Chat API",
       description: "something",
       link: "/chat-ai"
     },
     {
-      image: "https://source.unsplash.com/400x300/?office",
-      title: "Chat API",
-      description: "something",
-      link: "/chat-ai"
-    },
-    {
-      image: "https://source.unsplash.com/400x300/?office",
+      image: "https://diplo-media.s3.eu-central-1.amazonaws.com/2024/11/apple-chatgpt-plus-subscription-upgrade-1024x576.png",
       title: 'Chat API',
       description: "something",
       link: "/chat-ai"

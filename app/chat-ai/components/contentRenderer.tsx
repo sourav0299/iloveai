@@ -34,7 +34,7 @@ const ContentRenderer = ({ content }: { content: string }) => {
   };
 
   // Split content into paragraphs
-  const paragraphs = content.split('\n\n').filter(Boolean);
+  const paragraphs = content.split('\n').filter(Boolean);
 
   return (
     <div className="space-y-4">
@@ -44,7 +44,7 @@ const ContentRenderer = ({ content }: { content: string }) => {
           return (
             <div 
               key={index}
-              className="flex items-start gap-3 p-3 rounded-lg bg-secondary/30 backdrop-blur-sm hover:bg-secondary/50 transition-all duration-300"
+              className="flex items-start gap-3 rounded-lg bg-secondary/30 backdrop-blur-sm hover:bg-secondary/50 transition-all duration-300"
             >
               <span className="text-primary mt-1">•</span>
               <div className="flex-1">

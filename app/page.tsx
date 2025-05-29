@@ -14,9 +14,6 @@ export default function Home() {
         <SearchBar />
       </div>
       <div className="py-5">
-        <Button className="m-10" variant="ghost">
-        <a href="/chat-ai" className="">Chat AI</a>
-      </Button>
       </div>
       <CardExamples />
     </div>
