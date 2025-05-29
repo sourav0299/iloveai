@@ -7,6 +7,8 @@ import Selector from './components/selector'
 import useAuth from '@/hooks/useAuthFirebase';
 import toast from 'react-hot-toast';
 import ContentRenderer from './components/contentRenderer';
+import { useWalletStore } from '@/store/store';
+import { useWalletUpdate } from '@/hooks/updateWalletBalance';
 
 interface Message {
   content: any;
@@ -27,6 +29,8 @@ const Chatbox = () => {
   const chatBoxRef = useRef<HTMLDivElement>(null);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const { user } = useAuth()
+  const { fetchBalance } = useWalletStore()
+  const { updateCredits } = useWalletUpdate()
 
 
   useEffect(() => {
@@ -74,42 +78,89 @@ const clearChat = () => {
   };
 
   const sendMessage = async () => {
-    if(!user){
-      toast.error("Please Login and Try Again")
-      return
+    if (!user) {
+      toast.error("Please Login and Try Again");
+      return;
     }
-
+  
     if (input.trim() === '') return;
-
-    const userMessage: Message = { content: input, isUser: true, sender: userName || 'You' };
-    setMessages([...messages, userMessage]);
-    setInput('');
-    setIsLoading(true);
-
+  
+    // Step 1: Verify credits first
     try {
-      const response = await fetch('/api/chat-ai/gemini/gemini-2.0-flash', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: input }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to get response from chatbot');
+      const currentBalance = Number(await fetchBalance(user.uid));
+      if (currentBalance < 1) {
+        toast.error("Insufficient Balance. Please recharge your wallet.");
+        return;
       }
-
-      const data = await response.json();
-      setRemainingQuota(data.remainingQuota);
-
-      if (typeof data.response === 'string') {
-        setMessages(prev => [...prev, { content: '', isUser: false, sender: CHATBOT_NAME }]);
-        animateText(data.response);
-      } else {
-        setMessages(prev => [...prev, { content: data.response, isUser: false, sender: CHATBOT_NAME }]);
+  
+      // Step 2: Add user message to chat
+      const userMessage: Message = { 
+        content: input, 
+        isUser: true, 
+        sender: userName || 'You' 
+      };
+      setMessages(prev => [...prev, userMessage]);
+      setInput('');
+      setIsLoading(true);
+  
+      // Step 3: Update credits before API call
+      try {
+        const updatedBalance = currentBalance - 1;
+        await updateCredits(-1, user.uid);
+      } catch (error) {
+        console.error("Failed to update balance:", error);
+        toast.error("Failed to process request. Credits not deducted.");
+        setIsLoading(false);
+        return;
+      }
+  
+      // Step 4: Make API call to Gemini
+      try {
+        const response = await fetch('/api/chat-ai/gemini/gemini-2.0-flash', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: input }),
+        });
+  
+        if (!response.ok) {
+          // If API call fails, revert the credit deduction
+          await updateCredits(currentBalance, user.uid);
+          throw new Error('Failed to get response from chatbot');
+        }
+  
+        const data = await response.json();
+        setRemainingQuota(data.remainingQuota);
+  
+        // Step 5: Handle response
+        if (typeof data.response === 'string') {
+          setMessages(prev => [...prev, { 
+            content: '', 
+            isUser: false, 
+            sender: CHATBOT_NAME 
+          }]);
+          animateText(data.response);
+        } else {
+          setMessages(prev => [...prev, { 
+            content: data.response, 
+            isUser: false, 
+            sender: CHATBOT_NAME 
+          }]);
+        }
+      } catch (error) {
+        // If API call fails, revert credit deduction
+        await updateCredits(currentBalance, user.uid);
+        console.error('Error:', error);
+        const errorMessage: Message = { 
+          content: "Sorry, I couldn't process your request. Please try again.", 
+          isUser: false, 
+          sender: CHATBOT_NAME 
+        };
+        setMessages(prev => [...prev, errorMessage]);
+        toast.error("Failed to get response. Credits refunded.");
       }
     } catch (error) {
-      console.error('Error:', error);
-      const errorMessage: Message = { content: "Sorry, I couldn't process your request. Please try again.", isUser: false, sender: CHATBOT_NAME };
-      setMessages(prev => [...prev, errorMessage]);
+      console.error('Error checking balance:', error);
+      toast.error("Failed to verify wallet balance");
     } finally {
       setIsLoading(false);
     }
