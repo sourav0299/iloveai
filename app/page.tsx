@@ -1,6 +1,7 @@
 'use client';
 import { Button } from "@/components/ui/button";
 import { SearchBar } from "./components/searchbar";
+import CardExamples from "./components/cardslist";
 
 export default function Home() {
 
@@ -12,6 +13,7 @@ export default function Home() {
         <SearchBar />
       </div>
       <div className="py-5">
+        <CardExamples />
         <Button className="m-10" variant="ghost">
         <a href="/chat-ai" className="">Chat AI</a>
       </Button>

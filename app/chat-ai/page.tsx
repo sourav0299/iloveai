@@ -14,7 +14,7 @@ interface Message {
   sender: string;
 }
 
-const TYPING_SPEED = 7;
+const TYPING_SPEED = 3;
 const CHATBOT_NAME = 'AI Assistant';
 
 const Chatbox = () => {
@@ -168,7 +168,7 @@ const clearChat = () => {
 
   const renderMessage = (msg: Message) => (
     <div>
-      <div className={`font-bold mb-1 text-gray-700`}>{msg.sender}</div>
+      <div className={`font-bold mb-1 text-black dark:text-white`}>{msg.sender}</div>
       {typeof msg.content === 'string' ? (
         msg.content.includes('*') ? (
         <ContentRenderer content={msg.content} />
