@@ -6,9 +6,11 @@ import { useEffect, useState } from "react";
 import type { User as PrismaUser } from '@prisma/client'
 import { createUser, getUser, updateUserLastLogin } from "./sso/sso";
 import toast from 'react-hot-toast'
+import useAuth from "@/hooks/useAuthFirebase";
 
 export default function NavbarLogoutProfile() {
-    const [user, setUser] = useState<PrismaUser | null>(null);
+    const { user } = useAuth()
+
 
     const handleGoogleLogin = async () => {
         try {
@@ -33,24 +35,11 @@ export default function NavbarLogoutProfile() {
                 dbUser = await updateUserLastLogin(FirebaseUser.uid)
                 toast.success("Welcome Back")
             }
-            setUser(dbUser);
         } catch (error) {
             console.error("Error signing in with Google:", error);
             toast.error("Error while creating profile")
         }
     };
-
-    useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-            if (firebaseUser) {
-                const dbUser = await getUser(firebaseUser.uid);
-                setUser(dbUser);
-            } else {
-                setUser(null);
-            }
-        });
-        return () => unsubscribe();
-    }, []);
 
     const handleLogout = async() => {
         try{
