@@ -22,7 +22,7 @@ type CardImageProps = {
   src: string;
 };
 
-const CardImage: React.FC<CardImageProps> = ({ src, link }) => (
+const CardImage: React.FC<CardImageProps> = ({ src }) => (
   <div>
     <img className="rounded-t-lg" src={src} alt="Card visual" />
   </div>
@@ -33,7 +33,7 @@ type CardContentProps = {
   description: string;
 };
 
-const CardContent: React.FC<CardContentProps> = ({ title, description, link }) => (
+const CardContent: React.FC<CardContentProps> = ({ title, description }) => (
   <div className="p-5">
     <div>
       <h5 className="mb-2 text-2xl font-bold tracking-tight text-card-foreground">
@@ -48,10 +48,9 @@ const CardContent: React.FC<CardContentProps> = ({ title, description, link }) =
 );
 
 type ReadMoreButtonProps = {
-  link: string;
 };
 
-const ReadMoreButton: React.FC<ReadMoreButtonProps> = ({ link }) => (
+const ReadMoreButton: React.FC<ReadMoreButtonProps> = ({}) => (
   <div
     className="inline-flex items-center px-3 py-2 text-sm font-medium text-primary-foreground bg-primary rounded-lg hover:bg-secondary hover:text-secondary-foreground focus:ring-4 focus:outline-none focus:ring-ring transition-colors"
   >
