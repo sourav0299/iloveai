@@ -2,9 +2,10 @@
 
 import type React from "react"
 import { useState, useRef, useEffect } from "react"
-import { Search } from "lucide-react"
+import { Search, X } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { useDebounce } from "@/hooks/useDebouce"
+import { Button } from "@/components/ui/button"
 
 interface TopSearch{
   keyword: string;
@@ -100,7 +101,10 @@ export function SearchBar() {
       {showDropdown && (
         <div className="absolute w-full bottom-[calc(100%+0.5rem)] bg-popover text-popover-foreground rounded-lg shadow-lg border border-border z-50">
           <div className="p-4">
-            <h3 className="text-sm font-semibold text-muted-foreground mb-2">Most Searched</h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-muted-foreground mb-2">Most Searched</h3>
+              <Button variant="ghost" className="py-1 px-3" onClick={() => setShowDropdown(false)}><X /></Button>
+            </div>
             <ul className="space-y-2">
               {mostSearchedItem.map((item, index) => (
                 <li
