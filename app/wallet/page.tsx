@@ -112,61 +112,75 @@ const handleProceedPayment = async () => {
   })
 }
 
-const handlePayment = async(amount: number) => {
-  try{
+// First, add this interface at the top of the file
+interface RazorpayResponse {
+  razorpay_payment_id: string;
+  razorpay_order_id: string;
+  razorpay_signature: string;
+}
+
+// Replace the handlePayment function
+const handlePayment = async (amount: number) => {
+  try {
+    setIsLoading(true);
+    
+    // Create Razorpay order
     const response = await fetch('/api/create-razorpay-order', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({amount})
+      body: JSON.stringify({ amount })
     });
-    const data = await response.json();
-    if(!response.ok){
-      throw new Error("Payment failed")
+
+    if (!response.ok) {
+      throw new Error('Failed to create payment order');
     }
 
-   const razorpay = new window.Razorpay({
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-        order_id: data.orderId,
-        amount: data.amount,
-        currency: data.currency,
-        name: "I LOVE AI",
-        description: `Payment for ${data.orderId}`,
-        image: "/logo.png",
-        prefill: {
-          name: user.displayName || "",
-          email: user.email,
-        },
-        handler: async function (response: any) {
-          try{
-          setIsLoading(true)
-          try {
-            await handleUpdateCredits(amount, user.uid)
-            const newBalance = await fetchBalance()
-            if(newBalance?.credits !== undefined){
-              setBalance(newBalance.credits);
-            }
-            toast.success(`₹${amount} Credits Added to Wallet`)
-          } catch (error) {
-            toast.error("Try again Later")
-            console.log(error)
-          } finally {
-            setIsLoading(false)
-          }
-      },
-      modal: {
-        ondismiss: function() {
-          setIsLoading(false);
-          toast.error("Payment cancelled");
-        }
+    const data = await response.json();
+
+    // Initialize Razorpay options
+    const options = {
+      key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+      order_id: data.orderId,
+      amount: data.amount,
+      currency: data.currency,
+      name: "I LOVE AI",
+      description: `Payment for ${data.orderId}`,
+      image: "/logo.png",
+      prefill: {
+        name: user?.displayName || "",
+        email: user?.email || "",
       },
       theme: {
         color: "#000000"
+      },
+      handler: async (response: RazorpayResponse) => {
+        try {
+          await handleUpdateCredits(amount, user.uid);
+          const newBalance = await fetchBalance();
+          
+          if (newBalance?.credits !== undefined) {
+            setBalance(newBalance.credits);
+            toast.success(`₹${amount} Credits Added to Wallet`);
+          }
+        } catch (error) {
+          console.error('Credit update failed:', error);
+          toast.error("Failed to update credits. Please contact support.");
+        }
+      },
+      modal: {
+        ondismiss: () => {
+          setIsLoading(false);
+          toast.error("Payment cancelled");
+        }
       }
-    });
+    };
 
-    razorpay.on('payment.failed', function(resp: any) {
+    const razorpay = new window.Razorpay(options);
+
+    razorpay.on('payment.failed', (resp: { error: { description: string } }) => {
+      setIsLoading(false);
       toast.error(resp.error.description || "Payment failed");
     });
 
@@ -174,6 +188,7 @@ const handlePayment = async(amount: number) => {
   } catch (error) {
     console.error("Payment initialization failed:", error);
     toast.error("Failed to process payment");
+    setIsLoading(false);
   }
 };
 
